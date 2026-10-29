@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { motion, AnimatePresence, LayoutGroup, MotionConfig } from 'motion/react'
 import { ESTADOS, EQUIPO, ESPACIOS, PROYECTOS, TAREAS, ACTIVIDAD } from './data.js'
 import { hoyISO, fecha, alerta, progreso, iniciales, dias, addDias, parse } from './util.js'
 
 const KEY = 'umbral-oficio.v1'
+const SPRING = { type: 'spring', stiffness: 520, damping: 42, mass: 0.9 }
+const DRAWER = { type: 'spring', stiffness: 380, damping: 38 }
 const VISTAS = [
   ['proyectos', 'Proyectos'], ['resumen', 'Resumen'], ['tareas', 'Tareas'], ['tablero', 'Tablero'],
   ['cronograma', 'Cronograma'], ['calendario', 'Calendario'], ['equipo', 'Equipo'], ['actividad', 'Actividad'],
@@ -67,7 +70,8 @@ export default function App() {
   const conFiltros = ['tareas', 'tablero', 'cronograma', 'calendario', 'resumen'].includes(vista)
 
   return (
-    <div className="app">
+    <MotionConfig reducedMotion="user"><div className="app">
+      <div className="ambient" aria-hidden><i /><i /><i /></div>
       <aside className="sidebar">
         <a className="brand" href="#/proyectos"><span className="brand-mark">u</span><span>umbral<small>espacio de trabajo · con Oficio</small></span></a>
         <div className="context">
@@ -103,15 +107,15 @@ export default function App() {
         {vista === 'equipo' && <Equipo tareas={delProyecto} hoy={hoy} />}
         {vista === 'actividad' && <Actividad items={db.actividad} />}
       </main>
-      {abierta && byId[abierta] && <Panel t={byId[abierta]} byId={byId} hijos={db.tareas.filter(x => x.parentId === abierta)} hoy={hoy}
-        cerrar={() => setAbierta(null)} abrir={setAbierta} actualizar={actualizar} />}
-    </div>
+      <AnimatePresence>{abierta && byId[abierta] && <Panel key="panel" t={byId[abierta]} byId={byId} hijos={db.tareas.filter(x => x.parentId === abierta)} hoy={hoy}
+        cerrar={() => setAbierta(null)} abrir={setAbierta} actualizar={actualizar} />}</AnimatePresence>
+    </div></MotionConfig>
   )
 }
 
 function Progreso({ tareas }) {
   const p = progreso(tareas)
-  return <div className="progress-wrap"><div className="progress" role="progressbar" aria-valuenow={p.pct} aria-valuemin={0} aria-valuemax={100} aria-label="Progreso"><span style={{ width: p.pct + '%' }} /></div><small>{p.total === 0 ? 'Sin tareas todavía' : `${p.hechas} de ${p.total} ${p.total === 1 ? 'completada' : 'completadas'} · ${p.pct}%`}</small></div>
+  return <div className="progress-wrap"><div className="progress" role="progressbar" aria-valuenow={p.pct} aria-valuemin={0} aria-valuemax={100} aria-label="Progreso"><motion.span initial={false} animate={{ width: p.pct + '%' }} transition={SPRING} /></div><small>{p.total === 0 ? 'Sin tareas todavía' : `${p.hechas} de ${p.total} ${p.total === 1 ? 'completada' : 'completadas'} · ${p.pct}%`}</small></div>
 }
 function Alerta({ t, hoy }) { const a = alerta(t, hoy); return a ? <span className={'alert ' + a.tipo}>{a.tipo === 'vencida' ? '! ' : '◷ '}{a.label}</span> : null }
 function Avatar({ n }) { return <span className="avatar" title={n || 'Sin asignar'}>{iniciales(n)}</span> }
@@ -119,7 +123,7 @@ function Padre({ t, byId }) { const p = t.parentId && byId[t.parentId]; return p
 
 function Proyectos({ tareas, hoy, elegir }) {
   return <section>
-    <div className="hero"><h1 className="display">El trabajo, en perspectiva.</h1><p className="lede">Avance calculado con las tareas completadas de cada proyecto, y alertas de atraso según la fecha de hoy.</p></div>
+    <div className="hero"><h1 className="display">El trabajo, <em>en perspectiva.</em></h1><p className="lede">Avance calculado con las tareas completadas de cada proyecto, y alertas de atraso según la fecha de hoy.</p></div>
     {ESPACIOS.map(o => <div key={o.id}><h2 className="group-title">{o.name}</h2><div className="cards">
       {PROYECTOS.filter(p => p.org === o.id).map(p => {
         const ts = tareas.filter(t => t.project === p.id), venc = ts.filter(t => alerta(t, hoy)?.tipo === 'vencida').length, sem = ts.filter(t => alerta(t, hoy)?.tipo === 'semana').length
@@ -166,23 +170,23 @@ function Tablero(ctx) {
   useEffect(() => { const f = e => e.key === 'Escape' && setMenu(null); addEventListener('keydown', f); return () => removeEventListener('keydown', f) }, [])
   return <section className="board" onClick={() => setMenu(null)}>
     <p className="muted small hint">Arrastra una tarjeta para cambiar su estado, o usa el menú ⋯ de cada tarjeta.</p>
-    <div className="columns">{ESTADOS.map(e => {
+    <LayoutGroup><div className="columns">{ESTADOS.map(e => {
       const ts = ctx.tareas.filter(t => t.status === e.id)
       return <div key={e.id} className={'column' + (sobre === e.id ? ' over' : '')}
         onDragOver={ev => { ev.preventDefault(); setSobre(e.id) }} onDragLeave={ev => { if (!ev.currentTarget.contains(ev.relatedTarget)) setSobre(null) }}
         onDrop={ev => { ev.preventDefault(); ctx.mover(ev.dataTransfer.getData('text/plain'), e.id); setSobre(null) }}>
         <h2 className="col-title"><span className={'dot s-' + e.id} />{e.label}<span className="count">{ts.length}</span></h2>
-        {ts.map(t => <article key={t.id} className={'card' + (arrastrando === t.id ? ' dragging' : '')} draggable onDragStart={ev => { ev.dataTransfer.setData('text/plain', t.id); ev.dataTransfer.effectAllowed = 'move'; setArrastrando(t.id) }} onDragEnd={() => setArrastrando(null)}>
+        <AnimatePresence initial={false}>{ts.map(t => <motion.div key={t.id} layout="position" layoutId={'card-' + t.id} transition={SPRING} style={{ position: 'relative', zIndex: menu === t.id ? 6 : 'auto' }}><article className={'card' + (arrastrando === t.id ? ' dragging' : '')} draggable onDragStart={ev => { ev.dataTransfer.setData('text/plain', t.id); ev.dataTransfer.effectAllowed = 'move'; setArrastrando(t.id) }} onDragEnd={() => setArrastrando(null)}>
           <button className="card-main" onClick={() => ctx.abrir(t.id)}>
             <Padre t={t} byId={ctx.byId} /><span className="card-title" title={t.title}>{t.title}</span>
             <span className="card-meta"><Avatar n={t.assignee} /><span className="muted small">{fecha(t.due)}</span><Alerta t={t} hoy={ctx.hoy} /></span>
           </button>
           <button className="kebab" aria-label={`Acciones para ${t.title}`} aria-haspopup="menu" aria-expanded={menu === t.id} onClick={ev => { ev.stopPropagation(); setMenu(menu === t.id ? null : t.id) }}>⋯</button>
-          {menu === t.id && <div className="menu" role="menu">{ESTADOS.filter(x => x.id !== t.status).map(x => <button role="menuitem" key={x.id} onClick={() => { ctx.mover(t.id, x.id); setMenu(null) }}>Mover a {x.label}</button>)}</div>}
-        </article>)}
+          {menu === t.id && <motion.div className="menu" role="menu" initial={{ opacity: 0, scale: 0.97, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}>{ESTADOS.filter(x => x.id !== t.status).map(x => <button role="menuitem" key={x.id} onClick={() => { ctx.mover(t.id, x.id); setMenu(null) }}>Mover a {x.label}</button>)}</motion.div>}
+        </article></motion.div>)}</AnimatePresence>
         {ts.length === 0 && <p className="muted empty">Suelta aquí</p>}
       </div>
-    })}</div>
+    })}</div></LayoutGroup>
   </section>
 }
 
@@ -234,8 +238,8 @@ function Panel({ t, byId, hijos, hoy, cerrar, abrir, actualizar }) {
   useEffect(() => { const f = e => e.key === 'Escape' && cerrar(); addEventListener('keydown', f); return () => removeEventListener('keydown', f) }, [])
   const set = (k, label) => e => actualizar(t.id, { [k]: e.target.value || null }, label ? `cambió ${label} de «${t.title}»` : null)
   const padre = t.parentId && byId[t.parentId]
-  return <><div className="scrim" onClick={cerrar} />
-    <aside className="side-panel" role="dialog" aria-modal="true" aria-label="Detalle de tarea">
+  return <><motion.div className="scrim" onClick={cerrar} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} />
+    <motion.aside className="side-panel" role="dialog" aria-modal="true" aria-label="Detalle de tarea" initial={{ x: 48, opacity: 0, scale: 0.985 }} animate={{ x: 0, opacity: 1, scale: 1 }} exit={{ x: 32, opacity: 0, transition: { duration: 0.16 } }} transition={DRAWER}>
       <div className="sp-head"><p className="eyebrow">Detalle de tarea</p><button className="icon" onClick={cerrar} aria-label="Cerrar detalle">✕</button></div>
       {padre && <button className="parent-link" title={padre.title} onClick={() => abrir(padre.id)}>↳ Dentro de <b>{padre.title}</b></button>}
       <textarea ref={titulo} className="sp-title" aria-label="Título" rows={1} value={t.title} onChange={set('title')} />
@@ -251,5 +255,5 @@ function Panel({ t, byId, hijos, hoy, cerrar, abrir, actualizar }) {
       <textarea id="desc" rows={4} value={t.description} onChange={set('description')} placeholder="Agrega contexto para el equipo" />
       <p className="eyebrow">Subtareas · {hijos.filter(h => h.status === 'completada').length}/{hijos.length}</p>
       {hijos.length === 0 ? <p className="muted small">Sin subtareas.</p> : hijos.map(h => <button key={h.id} className="row-btn" onClick={() => abrir(h.id)}><span><span className={'dot s-' + h.status} />{h.title}</span><Alerta t={h} hoy={hoy} /></button>)}
-    </aside></>
+    </motion.aside></>
 }
