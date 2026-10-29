@@ -21,3 +21,9 @@ npm install
 npm run dev      # desarrollo
 npm run build    # genera dist/ (base './', apto para GitHub Pages en subruta)
 ```
+
+## Modo peor caso
+Abre `?data=worst#/tablero` para cargar 300 tareas, nombres muy largos (con y sin espacios), columnas vacías, responsables y fechas faltantes. No se guarda en `localStorage`.
+
+## Guías de diseño aplicadas
+Emil Kowalski (design-eng, improve-animations, break-ui), Anthropic frontend-design y Vercel web-design-guidelines: curvas de easing propias, respuesta `scale(.97)` al presionar, panel y menú con `@starting-style`, `prefers-reduced-motion`, etiquetas en tipo oración, cifras tabulares, `aria-live`, foco gestionado en el panel.

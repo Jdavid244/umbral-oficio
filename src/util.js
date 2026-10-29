@@ -8,8 +8,8 @@ export const fecha = s => s ? fmt.format(parse(s)).replace('.', '') : 'Sin fecha
 export function alerta(t, hoy = hoyISO()) {
   if (!t.due || t.status === 'completada') return null;
   const d = dias(hoy, t.due);
-  if (d < 0) return { tipo: 'vencida', label: `Vencida hace ${-d} d` };
-  if (d <= 7) return { tipo: 'semana', label: d === 0 ? 'Vence hoy' : `Vence en ${d} d` };
+  if (d < 0) return { tipo: 'vencida', label: -d === 1 ? 'Venció ayer' : `Vencida hace ${-d} días` };
+  if (d <= 7) return { tipo: 'semana', label: d === 0 ? 'Vence hoy' : d === 1 ? 'Vence mañana' : `Vence en ${d} días` };
   return null;
 }
 export const progreso = tareas => { const total = tareas.length, hechas = tareas.filter(t => t.status === 'completada').length; return { total, hechas, pct: total ? Math.round(hechas*100/total) : 0 } };
